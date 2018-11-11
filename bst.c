@@ -13,6 +13,7 @@
 #include <assert.h>
 
 #include "bst.h"
+#include "stack.h"
 
 /*
  * This structure represents a single node in a BST.
@@ -312,9 +313,26 @@ int bst_contains(int val, struct bst* bst) {
  * This is the structure you will use to create an in-order BST iterator.  It
  * is up to you how to define this structure.
  */
-struct bst_iterator;
+struct bst_iterator{
+	struct stack* s;
+};
 
+/*
+ * This function finds the number of nodes in a tree
+ *
+ * Params:
+ * 	node=the bst_node that is being counted
+ * Return:
+ * 	Should return the number of nodes
+ */
 
+int get_size(struct bst_node* node){
+	if(node==0) //if the node is empty, should not be counted
+		return 0;
+	else{
+		return get_size(node->left) + 1 +get_size(node->right); //gets the size of the left node, gets the size of the right node, and then adds 1 for the root node
+	}
+}
 /*
  * This function should return the total number of elements stored in a given
  * BST.
@@ -326,9 +344,48 @@ struct bst_iterator;
  *   Should return the total number of elements stored in bst.
  */
 int bst_size(struct bst* bst) {
-  return 0;
+	if(bst_isempty(bst)){ //if there are no nodes in the entire tree, should return 0
+		return 0;
+	}
+	else{
+		return (get_size(bst->root->left) + 1 + get_size(bst->root->right)); //counts the nodes of the left and right subtrees and then adds 1 for the root node
+	}//returning the value that the call to get_size returns
 }
 
+/*
+ * This function returns the maximum of two integers
+ *
+ * Params:
+ * 	x and y are two integers that are being compared
+ *
+ * Return:
+ *	Returns that largest integer
+ */
+
+int get_max(int x, int y){
+	if(x>=y)	
+		return x; //x would be larger and therefore would be returned 
+	else  
+		return y; //y would be larger and therefore would be returned
+} 
+
+/*
+ * This function gets the maximum depth of a node
+ *
+ * Params:
+ * 	node is the bst_node element that will be counted for its depth
+ *
+ * Return:
+ * 	Should return the maximum depth of a node
+ * /
+ */
+
+int get_height(struct bst_node* node){
+	if(node==NULL){ // if there is no node, then this is simply 0
+		return 0; 
+	}
+	return 1 + get_max(get_height(node->left), get_height(node->right)); //finds if the left or right node is larger and returns that, adds 1 for the root
+}
 
 /*
  * This function should return the height of a given BST, which is the maximum
@@ -342,10 +399,36 @@ int bst_size(struct bst* bst) {
  * Return:
  *   Should return the height of bst.
  */
+
 int bst_height(struct bst* bst) {
-  return 0;
+	if(bst_isempty(bst)) // an empty tree gets a height of -1
+		return -1;
+	else{
+		return get_max(get_height(bst->root->left), get_height(bst->root->right)); //recursively calls to the get max function and puts in the left and right subtrees from the get_height function to find the largest, and the largest depth is returned
+	} //returns the value of the get_max function from this function call
 }
 
+/*
+ * This function finds if nodes add up to a specific sum
+ *
+ * Params:
+ * 	node is the element of bst_node that will be used to calculate the path sum
+ *	sum is the value that is being checked
+ *
+ * Return:
+ * 	returns if a sum is found or not (1 or 0)
+ */
+
+int get_path_sum(struct bst_node* node, int sum){
+	if(node==NULL) //should be 0 if there is no node
+		return 0;
+	if((sum-node->val)==0 && node->right==NULL && node->left==NULL){ ////if the sum is equal to the leaf node
+		return 1; //returns true
+	}
+	else{
+		return get_path_sum(node->left, sum-node->val)||get_path_sum(node->right, sum-node->val); //checks if sum is found in left or right path sum
+	}
+}
 
 /*
  * This function should determine whether a given BST contains a path from the
@@ -360,9 +443,32 @@ int bst_height(struct bst* bst) {
  *   the values of the nodes add up to sum.  Should return 0 otherwise.
  */
 int bst_path_sum(int sum, struct bst* bst) {
-  return 0;
+	if(bst_isempty(bst)) //  should return a 0 if the tree is empty
+		return 0;
+        if((sum-bst->root->val)==0 &&  bst->root->right==NULL && bst->root->left==NULL){ //if the sum is equal to the leaf node
+		return 1; //return true
+	}        
+	else{ 
+		return get_path_sum(bst->root->left, sum-bst->root->val) || get_path_sum( bst->root->right, sum-bst->root->val); // checks right and left subtrees and returns if the sum is found within the left or right subtrees
+	}
 }
 
+/*
+ * This function is a push function that pushes the nodes into the stack in order to later make sure that the bst_iterator object can be actually filled
+ *
+ * Params:
+ * s is the stack object to be filled, n is what the stakc object 's' will be filled with
+ *
+ * Return:
+ * void
+ */
+
+void push(struct stack*s, struct bst_node* n){
+	while(n){ //while there are still nodes to be pushed in
+		stack_push(s, n); //pushes in the nodes from the tree into the stack
+		n=n->left; //moves the node to the next node to the left
+	}
+}
 
 /*
  * This function should allocate and initialize a new in-order BST iterator
@@ -376,8 +482,13 @@ int bst_path_sum(int sum, struct bst* bst) {
  *   that the first value returned by bst_iterator_next() is the first in-order
  *   value in bst (i.e. the leftmost value in the tree).
  */
+
 struct bst_iterator* bst_iterator_create(struct bst* bst) {
-  return NULL;
+	struct bst_iterator* iter=malloc(sizeof(struct bst_iterator));
+	assert(iter);
+	iter->s=stack_create(); //makes sure the iterator can be created from an empty tree
+	push(iter->s, bst->root); //makes sure the iterator can be created from a non-empty tree
+	return iter; // returns a pointer to the bst_iterator struct iter
 }
 
 /*
@@ -386,8 +497,11 @@ struct bst_iterator* bst_iterator_create(struct bst* bst) {
  * Params:
  *   iter - the iterator whose memory is to be freed.  May not be NULL.
  */
-void bst_iterator_free(struct bst_iterator* iter) {
 
+void bst_iterator_free(struct bst_iterator* iter) {
+	assert(iter);
+	stack_free(iter->s);
+	free(iter);
 }
 
 
@@ -399,10 +513,16 @@ void bst_iterator_free(struct bst_iterator* iter) {
  * Params:
  *   iter - the iterator to be checked for more values.  May not be NULL.
  */
-int bst_iterator_has_next(struct bst_iterator* iter) {
-  return 0;
-}
 
+int bst_iterator_has_next(struct bst_iterator* iter) {
+	assert(iter); //makes sure iter is not NULL, otherwise will throw an error
+	int x;
+	x=stack_isempty(iter->s); 
+	if(x)
+		return 0; //if the stack is empty, return false (0)
+	else
+		return 1; //if the stack is not completely empty, return true (1)
+}
 
 /*
  * This function should return the next value in the in-order iteration of the
@@ -412,6 +532,12 @@ int bst_iterator_has_next(struct bst_iterator* iter) {
  *   iter - the iterator whose next value is to be returned.  May not be NULL
  *     and must have at least one more value to be returned.
  */
+
 int bst_iterator_next(struct bst_iterator* iter) {
-  return 0;
+	assert(iter);
+	struct bst_node* node; //be able to access the nodes
+	node=stack_top(iter->s); 
+	stack_pop(iter->s); 
+	push(iter->s, node->right); //makes sure the right nodes are accounted for, pushes the node to the right of the node into the stack, then the node is moved left
+	return node->val; //returns the next smallest number
 }
